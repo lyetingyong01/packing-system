@@ -240,15 +240,20 @@ function drawOverlay() {
 }
 
 async function initCamera() {
-  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-  video.srcObject = stream;
-  await video.play();
-  const loop = () => {
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    drawOverlay();
-    requestAnimationFrame(loop);
-  };
-  loop();
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+    await video.play();
+    const loop = () => {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      drawOverlay();
+      requestAnimationFrame(loop);
+    };
+    loop();
+  } catch (err) {
+    status.textContent = "🚫 无法访问摄像头，请检查权限";
+    console.error(err);
+  }
 }
 
 input.addEventListener("keydown", async function(e) {
