@@ -4,9 +4,6 @@
   <meta charset="UTF-8" />
   <title>Yong Warehouse Melaka - 打包系统</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
   <style>
     body {
       font-family: 'Inter', sans-serif;
@@ -16,30 +13,6 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-    }
-    #passwordOverlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.8);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      color: white;
-    }
-    #passwordInput {
-      padding: 10px;
-      font-size: 18px;
-      border-radius: 8px;
-      border: none;
-      text-align: center;
-    }
-    #mainArea, #status, #barcodeInput, #confirmRepack, #endTaskBtn, #info, #summaryBox, #canvas, audio, h1 {
-      display: none;
     }
     h1 {
       color: #1c1c1e;
@@ -53,11 +26,11 @@
       justify-content: center;
       align-items: flex-start;
     }
-    #status, #info, #summaryBox, #confirmRepack {
+    #status {
       background: #ffffff;
       border-radius: 16px;
       padding: 20px;
-      font-size: 16px;
+      font-size: 18px;
       color: #333;
       text-align: left;
       box-shadow: 0 4px 8px rgba(0,0,0,0.05);
@@ -82,6 +55,10 @@
       cursor: pointer;
       background-color: #007aff;
       color: white;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background-color: #005fcc;
     }
     .sku-delete {
       margin-left: 10px;
@@ -96,6 +73,29 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
       background-color: #000;
     }
+    #info, #summaryBox {
+      background: white;
+      padding: 10px;
+      width: 300px;
+      font-family: monospace;
+      font-size: 14px;
+      white-space: pre-wrap;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    #info div, #summaryBox div {
+      margin-bottom: 6px;
+    }
+    #confirmRepack {
+      display: none;
+      margin-top: 10px;
+      padding: 10px;
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      border-radius: 10px;
+      white-space: pre-wrap;
+    }
     #endTaskBtn {
       display: none;
       margin-top: 15px;
@@ -103,69 +103,58 @@
   </style>
 </head>
 <body>
-<div id="passwordOverlay">
-  <h2>请输入密码访问系统</h2>
-  <input id="passwordInput" type="password" placeholder="请输入密码" />
-  <button onclick="checkPassword()">进入</button>
-</div>
-<h1>Yong Warehouse Melaka</h1>
-<div id="status">🟢 请扫描 SKU 开始</div>
-<input id="barcodeInput" placeholder="扫描条码…" autofocus />
-<div id="confirmRepack" style="display:none;"></div>
-<button id="endTaskBtn" onclick="endTask()">📦 打包完成，结束任务</button>
-<div id="mainArea">
-  <div id="summaryBox"></div>
-  <canvas id="canvas" width="640" height="480"></canvas>
-  <div id="info"></div>
-</div>
-<audio id="dingSound" src="ding.mp3" preload="auto"></audio>
-<audio id="errorSound" src="dada.mp3" preload="auto"></audio>
+  <h1>Yong Warehouse Melaka</h1>
 
-<script>
-function checkPassword() {
-  const input = document.getElementById("passwordInput").value;
-  const correct = "123456";
-  if (input === correct) {
-    document.getElementById("passwordOverlay").style.display = "none";
-    document.querySelectorAll("#mainArea, #status, #barcodeInput, #confirmRepack, #endTaskBtn, #info, #summaryBox, #canvas, audio, h1")
-      .forEach(el => el.style.display = "");
-  } else {
-    alert("密码错误，请重新输入");
-  }
-}
-</script>
-<script>
-// Firebase 初始化
-const firebaseConfig = {
-  apiKey: "AIzaSyBSP7acsOkjCrS4wauUoW6Y4_rbG8AZ7kQ",
-  authDomain: "packingsystem-be3af.firebaseapp.com",
-  projectId: "packingsystem-be3af",
-  storageBucket: "packingsystem-be3af.appspot.com",
-  messagingSenderId: "133969298806",
-  appId: "1:133969298806:web:be18d67e37faf4478da657",
-  measurementId: "G-9XNWZLVFHL"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const storage = firebase.storage();
+  <div id="status">🟢 请扫描 SKU 开始</div>
+  <input id="barcodeInput" placeholder="扫描条码…" autofocus />
 
-const input = document.getElementById("barcodeInput");
-const status = document.getElementById("status");
-const infoDisplay = document.getElementById("info");
+  <div id="confirmRepack">
+    🚨 此订单已打包：<br><span id="repeatOrder"></span><br>
+    是否要重新打包？<br>
+    <button onclick="confirmRepack(true)">✅ 是</button>
+    <button onclick="confirmRepack(false)">❌ 否</button>
+  </div>
+
+  <button id="endTaskBtn" onclick="endTask()">📦 打包完成，结束任务</button>
+
+  <div id="mainArea">
+    <div id="summaryBox"></div>
+    <canvas id="canvas" width="640" height="480"></canvas>
+    <div id="info"></div>
+  </div>
+
+  <audio id="dingSound" src="ding.mp3" preload="auto"></audio>
+  <audio id="errorSound" src="dada.mp3" preload="auto"></audio>
+
+  <script>
 const summaryBox = document.getElementById("summaryBox");
 const confirmBox = document.getElementById("confirmRepack");
+const repeatOrder = document.getElementById("repeatOrder");
+const status = document.getElementById("status");
+const input = document.getElementById("barcodeInput");
+const infoDisplay = document.getElementById("info");
 const endTaskBtn = document.getElementById("endTaskBtn");
 const dingSound = document.getElementById("dingSound");
 const errorSound = document.getElementById("errorSound");
 
+const video = document.createElement("video");
+video.setAttribute("playsinline", "true");
+video.setAttribute("autoplay", "true");
+video.setAttribute("muted", "true");
+video.style.display = "none";
+document.body.appendChild(video);
 let canvas = document.getElementById("canvas");
 let ctx = canvas.getContext("2d");
-let video = document.createElement("video");
-let mediaRecorder, recordedBlobs = [], isRecording = false;
-let skuMap = {}, trackingNumber = "";
+let mediaRecorder;
+let recordedBlobs = [];
+let skuMap = {};
+let trackingNumber = "";
+let isRecording = false;
 
-function isTrackingCode(code) {
-  return !code.startsWith("2JE") && code.length > 10;
+const today = new Date().toLocaleDateString();
+let summary = JSON.parse(localStorage.getItem("dailySummary") || "{}");
+if (summary.date !== today) {
+  summary = { date: today, total: 0, JNT: 0, Shopee: 0, NinjaVan: 0, Lazada: 0, Best: 0 };
 }
 
 function detectCourier(code) {
@@ -178,12 +167,36 @@ function detectCourier(code) {
   return null;
 }
 
+function updateSummary(courier) {
+  summary.total++;
+  if (courier && summary[courier] !== undefined) summary[courier]++;
+  localStorage.setItem("dailySummary", JSON.stringify(summary));
+  displaySummary();
+}
+
+function displaySummary() {
+  summaryBox.innerHTML = `
+<div><strong>📅 日期:</strong> ${summary.date}</div>
+<div><strong>📦 今日已打包:</strong> ${summary.total}</div>
+<div><strong>物流公司</strong></div>
+<div>J&T: ${summary.JNT}</div>
+<div>Shopee: ${summary.Shopee}</div>
+<div>NinjaVan: ${summary.NinjaVan}</div>
+<div>Lazada: ${summary.Lazada}</div>
+<div>Best: ${summary.Best}</div>
+  `;
+}
+
 function updateDisplay() {
-  let lines = [`<div><strong>📦 运单号:</strong> ${trackingNumber || "(尚未输入)"}</div>`];
+  let lines = [
+    `<div><strong>📦 运单号:</strong> ${trackingNumber || "(尚未输入)"}</div>`,
+    `<div><strong>📋 SKU:</strong></div>`
+  ];
   Object.entries(skuMap).forEach(([sku, count], i) => {
-    lines.push(`<div>[${i + 1}] ${sku} x ${count} <button onclick=\"deleteSKU('${sku}')\" class='sku-delete'>❌</button></div>`);
+    lines.push(`<div>[${i + 1}] ${sku} x ${count} <button onclick="deleteSKU('${sku}')" class="sku-delete">❌</button></div>`);
   });
-  infoDisplay.innerHTML = lines.join("\n");
+  lines.push(`<div>🕒 ${new Date().toLocaleString()}</div>`);
+  infoDisplay.innerHTML = lines.join("");
 }
 
 function deleteSKU(sku) {
@@ -198,94 +211,92 @@ function startRecording() {
   recordedBlobs = [];
   const canvasStream = canvas.captureStream(30);
   mediaRecorder = new MediaRecorder(canvasStream, { mimeType: 'video/webm;codecs=vp8' });
-  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedBlobs.push(e.data); };
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data && e.data.size > 0) recordedBlobs.push(e.data);
+  };
   mediaRecorder.start(1000);
   isRecording = true;
   endTaskBtn.style.display = "inline-block";
 }
 
-async function stopRecordingAndUpload() {
+function stopRecordingAndSave() {
+  const currentTracking = trackingNumber;
   mediaRecorder.stop();
   mediaRecorder.onstop = async () => {
     const blob = new Blob(recordedBlobs, { type: 'video/webm' });
-    const videoRef = storage.ref(`videos/${trackingNumber}.webm`);
-    await videoRef.put(blob);
-    alert("✅ 视频已上传到 Firebase");
+    const videoName = `${currentTracking}.webm`;
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: videoName,
+        types: [{ description: "WebM Video", accept: { "video/webm": [".webm"] } }]
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+    } catch (err) {
+      alert("❌ 视频保存失败或取消: " + err.message);
+    }
   };
   isRecording = false;
 }
 
-async function endTask() {
+function endTask() {
   if (!trackingNumber) return;
-  await db.collection("packedOrders").doc(trackingNumber).set({
-    time: new Date().toISOString(),
+  const packedHistory = JSON.parse(localStorage.getItem("packedOrders") || "{}");
+
+  // ✅ 保存当前运单号用于后续比较
+  const currentTracking = trackingNumber;
+
+  // ✅ 写入记录
+  packedHistory[currentTracking] = {
+    time: new Date().toLocaleString(),
     skus: { ...skuMap }
-  });
-  await stopRecordingAndUpload();
-  skuMap = {}; trackingNumber = "";
+  };
+  localStorage.setItem("packedOrders", JSON.stringify(packedHistory));
+
+  updateSummary(detectCourier(currentTracking));
+  stopRecordingAndSave();
+
+  skuMap = {};
+  trackingNumber = "";
   updateDisplay();
   status.textContent = "🟢 请扫描 SKU 开始";
   endTaskBtn.style.display = "none";
 }
 
-function drawOverlay() {
-  ctx.fillStyle = "rgba(0,0,0,0.5)";
-  ctx.fillRect(0, 0, 640, 90);
-  ctx.fillStyle = "white";
-  ctx.font = "18px monospace";
-  ctx.fillText(`运单号: ${trackingNumber || "(未设置)"}`, 10, 20);
-  Object.entries(skuMap).forEach(([sku, count], i) => {
-    ctx.fillText(`[${i + 1}] ${sku} x ${count}`, 10, 40 + i * 20);
-  });
+function isTrackingCode(code) {
+  return code.length > 10 && !code.startsWith("2JE");
 }
 
-async function initCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    video.srcObject = stream;
-    await video.play();
-    const loop = () => {
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      drawOverlay();
-      requestAnimationFrame(loop);
-    };
-    loop();
-  } catch (err) {
-    status.textContent = "🚫 无法访问摄像头，请检查权限";
-    console.error(err);
-  }
-}
-
-input.addEventListener("keydown", async function(e) {
+input.addEventListener("keydown", function(e) {
   if (e.key !== "Enter") return;
   const code = input.value.trim();
   if (!code) return;
-  const doc = await db.collection("packedOrders").doc(code).get();
+  const packedHistory = JSON.parse(localStorage.getItem("packedOrders") || "{}");
 
   if (!isTrackingCode(code)) {
     if (!isRecording) {
       startRecording();
       status.textContent = `🎥 开始录制，请继续扫码 SKU，最后扫码运单号结束打包`;
     }
-    if (!code.startsWith("2JE")) {
-      status.textContent = `⚠️ 无效的 SKU，必须以 2JE 开头`;
-      errorSound.play();
-      input.value = "";
-      return;
-    }
     skuMap[code] = (skuMap[code] || 0) + 1;
     dingSound.play();
     updateDisplay();
     status.textContent = `✅ SKU ${code} 已记录`;
   } else {
-    if (doc.exists) {
-      const data = doc.data();
-      let detail = `⏱ 打包时间：${data.time}\n📋 SKU：\n`;
-      Object.entries(data.skus).forEach(([sku, count], i) => {
-        detail += `   [${i + 1}] ${sku} x ${count}\n`;
+    if (packedHistory[code]) {
+      errorSound.play();
+      const last = packedHistory[code];
+      let detail = `⏱ 打包时间：${last.time}
+📋 SKU：
+`;
+      Object.entries(last.skus).forEach(([sku, count], i) => {
+        detail += `   [${i + 1}] ${sku} x ${count}
+`;
       });
+      repeatOrder.textContent = `${code}
+${detail}`;
       confirmBox.style.display = "block";
-      confirmBox.innerHTML = `🚨 此订单已打包：<br>${code}<br>${detail}<br><button onclick='confirmRepack(true)'>✅ 是</button><button onclick='confirmRepack(false)'>❌ 否</button>`;
       window.confirmRepack = function(yes) {
         confirmBox.style.display = "none";
         if (!yes) {
@@ -294,7 +305,7 @@ input.addEventListener("keydown", async function(e) {
           return;
         }
         trackingNumber = code;
-        endTask();
+    setTimeout(() => endTask(), 3000);
       };
       return;
     }
@@ -304,7 +315,39 @@ input.addEventListener("keydown", async function(e) {
   input.value = "";
 });
 
+function drawOverlay() {
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  ctx.fillRect(0, 0, 640, 90);
+  ctx.fillStyle = "white";
+  ctx.font = "18px monospace";
+  let y = 20;
+  ctx.fillText(`运单号: ${trackingNumber || "(未设置)"}`, 10, y); y += 20;
+  Object.entries(skuMap).forEach(([sku, count], i) => {
+    ctx.fillText(`[${i + 1}] ${sku} x ${count}`, 10, y);
+    y += 20;
+  });
+  ctx.fillText(new Date().toLocaleString(), 10, y);
+}
+
+async function initCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+    await video.play();
+    function drawLoop() {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      drawOverlay();
+      requestAnimationFrame(drawLoop);
+    }
+    drawLoop();
+  } catch (err) {
+    alert("无法打开摄像头，请检查权限");
+    console.error(err);
+  }
+}
+
 initCamera();
+displaySummary();
 updateDisplay();
 </script>
 </body>
